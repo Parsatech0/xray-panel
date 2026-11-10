@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد{% endblock %}
+
+{% block content %}
+
+{% if flash_kind and flash_message %}
+<div class="alert alert-{{ flash_kind }}">{{ flash_message }}</div>
+{% endif %}
+
+<div class="page-title">
+    <h2>داشبورد</h2>
+    <span class="muted">سلام، <strong>{{ admin.username }}</strong> 👋</span>
+</div>
+
+<!-- System stats -->
+<div class="card">
+    <h3 class="section-title">وضعیت سرور</h3>
+    {% if system_stats.ok %}
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-label">پردازنده (CPU)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-cpu">{{ system_stats.cpu_percent }}%</span></div>
+            <div class="progress"><div class="progress-fill" style="width: {{ system_stats.cpu_percent }}%"></div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">حافظه (RAM)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-ram">{{ system_stats.ram_percent }}%</span></div>
+            <div class="stat-meta" dir="ltr">{{ system_stats.ram_used_gb }} / {{ system_stats.ram_total_gb }} GB</div>
+            <div class="progress"><div class="progress-fill" style="width: {{ system_stats.ram_percent }}%"></div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">دیسک</div>
+            <div class="stat-value" dir="ltr"><span id="stat-disk">{{ system_stats.disk_percent }}%</span></div>
+            <div class="stat-meta" dir="ltr">{{ system_stats.disk_used_gb }} / {{ system_stats.disk_total_gb }} GB</div>
+            <div class="progress"><div class="progress-fill" style="width: {{ system_stats.disk_percent }}%"></div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Swap</div>
+            <div class="stat-value" dir="ltr"><span id="stat-swap">{{ system_stats.swap_percent }}%</span></div>
+        </div>
+    </div>
+    <div class="muted meta-row">
+        <span>آپ‌تایم: <span dir="ltr">{{ system_stats.uptime_text }}</span></span>
+        <span>بوت: <span dir="ltr">{{ system_stats.boot_text }}</span></span>
+    </div>
+    {% else %}
+    <p class="muted">آمار سرور در این میزبان در دسترس نیست.</p>
+    {% endif %}
+</div>
+
+<!-- Xray service -->
+<div class="card">
+    <h3 class="section-title">سرویس Xray</h3>
+    <div class="toolbar">
+        <div>
+            <span class="status-badge {{ xray.state_class }}">
+                <span class="status-dot"></span>
+                <span id="xray-state">{{ xray.state_label }}</span>
+            </span>
+            <span class="muted" dir="ltr">systemctl · {{ xray.service_name }}</span>
+            {% if xray.state_detail %}<span class="muted" dir="ltr">{{ xray.state_detail }}</span>{% endif %}
+        </div>
+        <div class="toolbar-buttons">
+            {% for action in ['start', 'restart', 'stop'] %}
+            <form method="POST" action="{{ url_for('xray_action', action=action) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-sm btn-secondary">{{ action }}</button>
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Traffic summary -->
+<div class="card">
+    <h3 class="section-title">خلاصه ترافیک</h3>
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-label">اینباند‌ها (فعال)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-inbounds">{{ counts.inbounds_total }}</span>
+                <span class="muted">/ {{ counts.inbounds_active }} فعال</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">کاربران</div>
+            <div class="stat-value" dir="ltr"><span id="stat-users">{{ counts.clients_total }}</span>
+                <span class="muted">/ {{ counts.clients_active }} فعال</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">غیرفعال (اتمام ترافیک)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-disabled-traffic">{{ counts.clients_disabled_traffic }}</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">غیرفعال (منقضی)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-disabled-expired">{{ counts.clients_disabled_expired }}</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">مصرف کل (GB)</div>
+            <div class="stat-value" dir="ltr"><span id="stat-traffic-total">{{ used_total_gb }}</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">به‌روزرسانی ترافیک از Xray</div>
+            <form method="POST" action="{{ url_for('system_monitor') }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="return_to" value="/dashboard">
+                <button type="submit" class="btn btn-primary btn-sm">به‌روزرسانی ترافیک</button>
+            </form>
+        </div>
+    </div>
+    <p class="muted">جزئیات هر کاربر در صفحه <a href="{{ url_for('inbounds_list') }}">اینباند‌ها</a>.</p>
+</div>
+
+<!-- Backup / restore -->
+<div class="card">
+    <h3 class="section-title">پشتیبان‌گیری و بازیابی</h3>
+    <div class="toolbar-buttons">
+        <form method="POST" action="{{ url_for('backup_download') }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-primary btn-sm">دانلود پشتیبان (JSON)</button>
+        </form>
+        <form method="POST" action="{{ url_for('backup_restore') }}" class="inline-form"
+              onsubmit="return confirm('بازیابی، همهٔ اینباند‌ها و کاربران فعلی را حذف می‌کند. ادامه؟');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="file" name="backup_file" accept="application/json" required>
+            <button type="submit" class="btn btn-danger btn-sm">بازیابی</button>
+        </form>
+    </div>
+    <p class="muted">پشتیبان شامل اینباند‌ها و کاربران است (رمزهای ادمین در آن نیست). بازیابی، اینباند‌های فعلی را جایگزین می‌کند.</p>
+</div>
+{% endblock %}

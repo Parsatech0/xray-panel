@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}اشتراک — {{ client.email }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>جزئیات اشتراک <span class="muted">— {{ client.email }}</span></h2>
+
+    <div class="alert alert-info">
+        لینک اشتراک را در کلاینت (v2rayNG / Nekoray / Streisand…) وارد کنید تا
+        کانفیگ‌ها به‌صورت خودکار به‌روز شوند:
+    </div>
+
+    <div class="share-cell" style="max-width: 480px;">
+        <div class="share-name">Subscription URL</div>
+        <img class="qr" src="{{ qr }}" alt="QR" width="140" height="140">
+        <code dir="ltr" class="break-all">{{ sub_link }}</code>
+    </div>
+
+    <h3 class="section-title">کانفیگ‌های این اشتراک</h3>
+    <ul class="links-list">
+        {% for link in links %}
+        <li><code dir="ltr" class="break-all tiny">{{ link }}</code></li>
+        {% else %}
+        <li class="muted">هیچ کانفیگی موجود نیست.</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">بازگشت</a>
+</div>
+{% endblock %}

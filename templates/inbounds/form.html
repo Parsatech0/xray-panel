@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'new' %}اینباند جدید{% else %}ویرایش اینباند{{ fields.remark and ' — ' + fields.remark or '' }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>
+        {% if mode == 'new' %}ایجاد اینباند جدید{% else %}ویرایش اینباند (شناسه {{ inbound.id }}){% endif %}
+    </h2>
+
+    {% if errors %}
+        <div class="alert alert-danger">
+            <ul class="error-list">
+                {% for msg in errors %}<li>{{ msg }}</li>{% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="POST"
+          action="{% if mode == 'new' %}{{ url_for('inbound_create') }}{% else %}{{ url_for('inbound_update', inbound_id=inbound.id) }}{% endif %}">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="form-grid">
+            <div class="field">
+                <label>عنوان (remark)</label>
+                <input type="text" name="remark" value="{{ fields.remark }}" required maxlength="64">
+            </div>
+            <div class="field">
+                <label>پورت</label>
+                <input type="number" name="port" value="{{ fields.port }}" min="1" max="65535" required>
+            </div>
+            <div class="field">
+                <label>آدرس گوش‌دادن (listen)</label>
+                <input type="text" name="listen" value="{{ fields.listen }}" dir="ltr" placeholder="0.0.0.0">
+            </div>
+            <div class="field">
+                <label>پروتکل</label>
+                <select id="in-protocol" name="protocol">
+                    {% for p in ['vless', 'vmess', 'trojan', 'shadowsocks'] %}
+                        <option value="{{ p }}" {% if fields.protocol == p %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>ترنسپورت</label>
+                <select id="in-transport" name="transport">
+                    {% for t in ['tcp', 'ws', 'grpc'] %}
+                        <option value="{{ t }}" {% if fields.transport == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>امنیت</label>
+                <select id="in-security" name="security">
+                    {% for s in ['none', 'tls', 'reality'] %}
+                        <option value="{{ s }}" {% if fields.security == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="field checkbox">
+            <label>
+                <input type="checkbox" name="sniffing" value="on" {% if fields.sniffing %}checked{% endif %}>
+                Sniffing فعال باشد
+            </label>
+        </div>
+
+        <div class="field checkbox">
+            <label>
+                <input type="checkbox" name="enable" value="on" {% if fields.enable %}checked{% endif %}>
+                اینباند فعال باشد
+            </label>
+        </div>
+
+        <!-- Shadowsocks settings -->
+        <fieldset id="block-ss" class="subblock">
+            <legend>تنظیمات Shadowsocks</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label>روش رمزنگاری (method)</label>
+                    <select id="in-ss-method" name="ss_method">
+                        {% for m in ['aes-128-gcm', 'aes-256-gcm', 'chacha20-ietf-poly1305', 'none'] %}
+                            <option value="{{ m }}" {% if fields.ss_method == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>رمز عبور SS (حداقل ۸ کاراکتر)</label>
+                    <input type="text" name="ss_password" value="{{ fields.ss_password }}" dir="ltr" autocomplete="new-password">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- WebSocket settings -->
+        <fieldset id="block-ws" class="subblock">
+            <legend>تنظیمات WebSocket</legend>
+            <div class="field">
+                <label>مسیر WS (path)</label>
+                <input type="text" name="ws_path" value="{{ fields.ws_path }}" dir="ltr" placeholder="/ws">
+            </div>
+        </fieldset>
+
+        <!-- gRPC settings -->
+        <fieldset id="block-grpc" class="subblock">
+            <legend>تنظیمات gRPC</legend>
+            <div class="field">
+                <label>نام سرویس (serviceName)</label>
+                <input type="text" name="grpc_service_name" value="{{ fields.grpc_service_name }}" dir="ltr">
+            </div>
+        </fieldset>
+
+        <!-- TLS settings -->
+        <fieldset id="block-tls" class="subblock">
+            <legend>تنظیمات TLS</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label>مسیر فایل گواهی (certificate)</label>
+                    <input type="text" name="tls_cert_file" value="{{ fields.tls_cert_file }}" dir="ltr"
+                           placeholder="/etc/letsencrypt/live/example.com/fullchain.pem">
+                </div>
+                <div class="field">
+                    <label>مسیر فایل کلید (key)</label>
+                    <input type="text" name="tls_key_file" value="{{ fields.tls_key_file }}" dir="ltr"
+                           placeholder="/etc/letsencrypt/live/example.com/privkey.pem">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Reality settings -->
+        <fieldset id="block-reality" class="subblock">
+            <legend>تنظیمات Reality</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label>مقصد (dest، به‌صورت host:port)</label>
+                    <input type="text" name="reality_dest" value="{{ fields.reality_dest }}" dir="ltr"
+                           placeholder="www.google.com:443">
+                </div>
+                <div class="field">
+                    <label>نام‌های سرور (با کاما جدا کنید)</label>
+                    <input type="text" name="reality_server_names" value="{{ fields.reality_server_names }}" dir="ltr"
+                           placeholder="www.google.com">
+                </div>
+                <div class="field">
+                    <label>کلید خصوصی (۴۳ کاراکتر — از دستور xray x25519)</label>
+                    <input type="text" name="reality_private_key" value="{{ fields.reality_private_key }}" dir="ltr">
+                </div>
+                <div class="field">
+                    <label>شناسه‌های کوتاه shortIds (با کاما، اختیاری)</label>
+                    <input type="text" name="reality_short_ids" value="{{ fields.reality_short_ids }}" dir="ltr"
+                           placeholder="a1b2c3d4, e5f6...">
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="field actions">
+            <button type="submit" class="btn btn-primary">ذخیره</button>
+            <a href="{{ url_for('inbounds_list') }}" class="btn btn-secondary">انصراف</a>
+        </div>
+    </form>
+</div>
+
+<!-- Show/hide condition-relevant settings blocks -->
+<script>
+    function updateVisibility() {
+        var protocol = document.getElementById('in-protocol').value;
+        var transport = document.getElementById('in-transport').value;
+        var security = document.getElementById('in-security').value;
+
+        document.getElementById('block-ss').style.display = (protocol === 'shadowsocks') ? '' : 'none';
+        document.getElementById('block-tls').style.display = (security === 'tls') ? '' : 'none';
+        document.getElementById('block-reality').style.display = (security === 'reality') ? '' : 'none';
+        document.getElementById('block-ws').style.display = (transport === 'ws') ? '' : 'none';
+        document.getElementById('block-grpc').style.display = (transport === 'grpc') ? '' : 'none';
+    }
+    window.addEventListener('DOMContentLoaded', updateVisibility);
+    document.addEventListener('change', function (e) {
+        if (e.target.id === 'in-protocol' || e.target.id === 'in-transport' || e.target.id === 'in-security') {
+            updateVisibility();
+        }
+    });
+</script>
+{% endblock %}

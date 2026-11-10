@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}کاربران — {{ inbound.remark }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="toolbar">
+        <div>
+            <h2>کاربران اینباند «{{ inbound.remark }}»</h2>
+            <span class="muted" dir="ltr">{{ inbound.protocol }} : {{ inbound.port }} / {{ inbound.transport }} / {{ inbound.security }}</span>
+        </div>
+        {% if inbound.protocol != 'shadowsocks' %}
+            <div class="toolbar-buttons">
+                <a href="{{ url_for('client_form_new', inbound_id=inbound.id) }}" class="btn btn-primary">+ کاربر جدید</a>
+                <form method="POST" action="{{ url_for('system_monitor') }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="return_to" value="/inbounds/{{ inbound.id }}/clients">
+                    <button type="submit" class="btn btn-secondary" title="به‌روزرسانی ترافیک از Xray">به‌روزرسانی ترافیک</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if flash_kind and flash_message %}
+        <div class="alert alert-{{ flash_kind }}">{{ flash_message }}</div>
+    {% endif %}
+
+    {% if inbound.protocol == 'shadowsocks' %}
+        <div class="alert alert-info">
+            اینباند Shadowsocks تک‌کاربر است؛ لینک اشتراکی آن:
+            <code dir="ltr" class="break-all">{{ ss_link }}</code>
+        </div>
+    {% endif %}
+
+    {% if rows %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>نام کاربر</th>
+                <th>شناسه (UUID/رمز)</th>
+                <th>محدودیت ترافیک</th>
+                <th>مصرف</th>
+                <th>تاریخ انقضا</th>
+                <th>محدودیت IP</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set c = row.client %}
+            <tr>
+                <td>{{ c.email }}</td>
+                <td><code dir="ltr" class="tiny">{{ c.uuid[:12] }}…</code></td>
+                <td dir="ltr">{% if c.total_gb %}{{ c.total_gb }} GB{% else %}Unlimited{% endif %}</td>
+                <td dir="ltr">{% if c.used_download_bytes or c.used_upload_bytes %}
+                    {{ ((c.used_download_bytes + c.used_upload_bytes) / 1073741824) | round(2) }} GB
+                {% else %}—{% endif %}</td>
+                <td dir="ltr">{{ c.expire_at.isoformat() if c.expire_at else '—' }}</td>
+                <td dir="ltr">{% if c.ip_limit %}{{ c.ip_limit }}{% else %}Unlimited{% endif %}</td>
+                <td>
+                    {% if c.enable %}<span class="badge badge-on">فعال</span>
+                    {% elif c.disabled_reason == 'traffic_limit' %}<span class="badge badge-off">غیرفعال (اتمام ترافیک)</span>
+                    {% elif c.disabled_reason == 'expired' %}<span class="badge badge-off">غیرفعال (منقضی)</span>
+                    {% else %}<span class="badge badge-off">غیرفعال</span>{% endif %}
+                </td>
+                <td class="actions-cell">
+                    <a href="{{ url_for('client_form_edit', inbound_id=inbound.id, client_id=c.id) }}" class="btn btn-sm btn-secondary">ویرایش</a>
+                    <form method="POST" action="{{ url_for('client_toggle', inbound_id=inbound.id, client_id=c.id) }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-secondary">
+                            {% if c.enable %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('client_reset_traffic', inbound_id=inbound.id, client_id=c.id) }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-secondary">صفر کردن ترافیک</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('client_delete', inbound_id=inbound.id, client_id=c.id) }}" class="inline-form"
+                          onsubmit="return confirm('این کاربر حذف شود؟');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Share links + QR codes -->
+    <h3 class="section-title">لینک‌های کانفیگ</h3>
+    <div class="share-grid">
+        {% for row in rows %}
+        {% if row.link %}
+        <div class="share-cell">
+            <div class="share-name">{{ row.client.email }}</div>
+            <img class="qr" src="{{ row.qr }}" alt="QR" width="120" height="120">
+            <code dir="ltr" class="break-all tiny">{{ row.link }}</code>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <!-- Phase 6: subscription links -->
+        {% for row in rows %}
+        {% if row.sub_url %}
+        <div class="share-cell">
+            <div class="share-name">اشتراک — {{ row.client.email }}</div>
+            <img class="qr" src="{{ row.sub_qr }}" alt="QR" width="120" height="120">
+            <a href="{{ row.sub_url }}" target="_blank">صفحه اشتراک</a>
+            <code dir="ltr" class="break-all tiny">{{ row.sub_url }}</code>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="muted">هنوز کاربری ثبت نشده است.</p>
+    {% endif %}
+
+    <hr>
+    <a href="{{ url_for('inbounds_list') }}" class="btn btn-secondary">بازگشت به اینباند‌ها</a>
+</div>
+{% endblock %}

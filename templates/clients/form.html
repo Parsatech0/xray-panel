@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'new' %}کاربر جدید{% else %}ویرایش کاربر {{ fields.email }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>
+        {% if mode == 'new' %}ایجاد کاربر جدید{% else %}ویرایش کاربر{% endif %}
+        <span class="muted">— {{ inbound.remark }} ({{ inbound.protocol }} : {{ inbound.port }})</span>
+    </h2>
+
+    {% if errors %}
+        <div class="alert alert-danger">
+            <ul class="error-list">
+                {% for msg in errors %}<li>{{ msg }}</li>{% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if mode == 'edit' and fields.uuid %}
+        <div class="alert alert-info">
+            شناسه فعلی کاربر: <code dir="ltr">{{ fields.uuid }}</code>
+            (برای تغییر، فیلد زیر را پر کنید؛ خالی بگذارید تا حفظ شود)
+        </div>
+    {% endif %}
+
+    <form method="POST"
+          action="{% if mode == 'new' %}{{ url_for('client_create', inbound_id=inbound.id) }}{% else %}{{ url_for('client_update', inbound_id=inbound.id, client_id=client.id) }}{% endif %}">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="form-grid">
+            <div class="field">
+                <label>نام کاربر (email)</label>
+                <input type="text" name="email" value="{{ fields.email }}" required maxlength="64" dir="ltr">
+            </div>
+            <div class="field">
+                <label>شناسه (UUID برای vless/vmess، رمز برای trojan) — خالی = تولید خودکار</label>
+                <input type="text" name="uuid" value="{{ fields.uuid }}" dir="ltr" placeholder="خالی بگذارید تا خودکار ساخته شود">
+            </div>
+
+            {% if inbound.protocol == 'vless' %}
+            <div class="field">
+                <label>Flow (فقط VLESS)</label>
+                <select name="flow">
+                    <option value="" {% if not fields.flow %}selected{% endif %}>— (بدون flow)</option>
+                    <option value="xtls-rprx-vision" {% if fields.flow == 'xtls-rprx-vision' %}selected{% endif %}>xtls-rprx-vision</option>
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="flow" value="">
+            {% endif %}
+
+            <div class="field">
+                <label>محدودیت ترافیک (GB) — صفر = نامحدود</label>
+                <input type="number" name="total_gb" value="{{ fields.total_gb }}" min="0" step="0.01" dir="ltr">
+            </div>
+            <div class="field">
+                <label>تاریخ انقضا (اختیاری)</label>
+                <input type="date" name="expire_at" value="{{ fields.expire_at }}" dir="ltr">
+            </div>
+            <div class="field">
+                <label>محدودیت همزمانی IP — صفر = نامحدود</label>
+                <input type="number" name="ip_limit" value="{{ fields.ip_limit }}" min="0" dir="ltr">
+            </div>
+        </div>
+
+        <div class="field checkbox">
+            <label>
+                <input type="checkbox" name="enable" value="on" {% if fields.enable %}checked{% endif %}>
+                کاربر فعال باشد
+            </label>
+        </div>
+
+        <div class="field actions">
+            <button type="submit" class="btn btn-primary">ذخیره</button>
+            <a href="{{ url_for('clients_list', inbound_id=inbound.id) }}" class="btn btn-secondary">انصراف</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

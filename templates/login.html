@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{% if change_password %}تغییر رمز عبور{% else %}ورود به پنل{% endif %}{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <h2>{% if change_password %}تغییر رمز عبور{% else %}ورود به پنل مدیریت{% endif %}</h2>
+
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <form method="POST" action="{% if change_password %}{{ url_for('change_password') }}{% else %}{{ url_for('login') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        {% if not change_password %}
+        <div class="field">
+            <label>نام کاربری</label>
+            <input type="text" name="username" required autocomplete="username">
+        </div>
+        <div class="field">
+            <label>رمز عبور</label>
+            <input type="password" name="password" required autocomplete="current-password">
+        </div>
+        {% else %}
+        <div class="field">
+            <label>رمز عبور فعلی</label>
+            <input type="password" name="current_password" required autocomplete="current-password">
+        </div>
+        <div class="field">
+            <label>رمز عبور جدید</label>
+            <input type="password" name="new_password" required autocomplete="new-password">
+        </div>
+        <div class="field">
+            <label>تأیید رمز عبور جدید</label>
+            <input type="password" name="confirm_password" required autocomplete="new-password">
+        </div>
+        {% endif %}
+
+        <div class="field actions">
+            <button type="submit" class="btn btn-primary">
+                {% if change_password %}ذخیره تغییرات{% else %}ورود{% endif %}
+            </button>
+        </div>
+    </form>
+
+    {% if not change_password %}
+    <p class="hint">رمز عبور را فراموش کرده‌اید؟ با مدیر سیستم تماس بگیرید.</p>
+    {% else %}
+    <p class="hint"><a href="{{ url_for('login') }}">بازگشت به صفحه ورود</a></p>
+    {% endif %}
+</div>
+{% endblock %}

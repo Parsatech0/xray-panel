@@ -1,0 +1,68 @@
+# =============================================================================
+# Automatic deployment (Phase 7)
+#
+# On every push to `main` this workflow connects to the VPS over SSH, syncs
+# the latest code and restarts the panel systemd service.
+#
+# Required GitHub repository Secrets (Settings -> Secrets and variables ->
+# Actions -> New repository secret):
+#   SSH_HOST         panel.example.com         (or the server IP)
+#   SSH_USER         deploy                    (a sudo-capable user, see
+#                                              docs/setup-guide.md step 6)
+#   SSH_PRIVATE_KEY  -----BEGIN OPENSSH PRIVATE KEY-----
+#                    ... the PRIVATE key of that user ...
+#                    -----END OPENSSH PRIVATE KEY-----
+#
+# Optional secrets (sane defaults shown):
+#   SSH_PORT         22
+#   DEPLOY_DIR       /opt/xray-panel
+# =============================================================================
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}   # allow manual runs from the Actions tab
+
+# Never run two deploys at the same time; queue instead of failing.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true          # abort the script on the first failing command
+          command_timeout: 8m
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_DIR || '/opt/xray-panel' }}"
+
+            echo "==> syncing code to origin/main"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "==> installing any new python dependencies"
+            ./venv/bin/pip install -q -r requirements.txt
+
+            echo "==> restarting the panel service"
+            # Passwordless sudo required unless SSH_USER is root:
+            #   deploy  ALL=(root) NOPASSWD: /usr/bin/systemctl restart xray-panel, ...
+            sudo systemctl restart xray-panel.service
+
+            echo "==> verifying"
+            systemctl is-active xray-panel.service
+            ./venv/bin/python -c "import app.main"  # smoke-import the app
+
+            echo "==> deploy finished at $(date -u +'%Y-%m-%d %H:%M:%SZ')"

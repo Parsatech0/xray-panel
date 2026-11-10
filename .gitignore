@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# ~/.gitignore for the Xray panel — never commit secrets or local state.
+# ---------------------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+venv/
+.venv/
+
+# Environment and secrets (never committed!)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+# Cloudflare Origin certificates / private keys dropped on the server
+deploy/**/*.pem
+deploy/**/*.key
+
+# Database files and any local state
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite3
+xray_panel.db*
+
+# Xray runtime artifacts (binary + generated config + backup copies)
+xray/
+*.json.new
+*.json.bak
+*.json.validate
+
+# Panel runtime
+logs/
+*.log
+
+# Test artifacts
+.smoke_test.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

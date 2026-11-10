@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}اینباند‌ها{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="toolbar">
+        <h2>اینباند‌ها</h2>
+        <a href="{{ url_for('inbound_form_new') }}" class="btn btn-primary">+ اینباند جدید</a>
+    </div>
+
+    {% if flash_kind and flash_message %}
+        <div class="alert alert-{{ flash_kind }}">{{ flash_message }}</div>
+    {% endif %}
+
+    {% if inbounds %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>عنوان</th>
+                <th>پورت</th>
+                <th>پروتکل</th>
+                <th>ترنسپورت</th>
+                <th>امنیت</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inbound in inbounds %}
+            <tr>
+                <td>{{ inbound.remark }}</td>
+                <td dir="ltr">{{ inbound.port }}</td>
+                <td>{{ inbound.protocol }}</td>
+                <td>{{ inbound.transport }}</td>
+                <td>{{ inbound.security }}</td>
+                <td>
+                    {% if inbound.enable %}
+                        <span class="badge badge-on">فعال</span>
+                    {% else %}
+                        <span class="badge badge-off">غیرفعال</span>
+                    {% endif %}
+                </td>
+                <td class="actions-cell">
+                    <a href="{{ url_for('clients_list', inbound_id=inbound.id) }}" class="btn btn-sm btn-secondary">کاربران ({{ inbound.clients|length }})</a>
+                    <form method="POST" action="{{ url_for('inbound_toggle', inbound_id=inbound.id) }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-secondary">
+                            {% if inbound.enable %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('inbound_form_edit', inbound_id=inbound.id) }}" class="btn btn-sm btn-secondary">ویرایش</a>
+                    <form method="POST" action="{{ url_for('inbound_delete', inbound_id=inbound.id) }}" class="inline-form"
+                          onsubmit="return confirm('این اینباند حذف شود؟');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="muted">هنوز اینباندی ثبت نشده است.</p>
+    {% endif %}
+
+    <hr>
+    <div class="toolbar">
+        <span class="muted">فایل کانفیگ جاری: <code dir="ltr">{{ config_path }}</code></span>
+        <form method="POST" action="{{ url_for('inbounds_apply') }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-success">اعمال کانفیگ</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
